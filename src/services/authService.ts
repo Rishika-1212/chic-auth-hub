@@ -2,12 +2,11 @@
 import { LoginCredentials, SignupCredentials, User } from "../types/auth";
 import { toast } from "sonner";
 
-// This would typically connect to your MongoDB API
-// For now, we're simulating the behavior with localStorage
-const API_URL = "/api/auth"; // Would point to your backend API
+// API URL for our MongoDB backend
+const API_URL = "http://localhost:5000/api/auth";
 
 class AuthService {
-  // localStorage key
+  // localStorage key for persisting session
   private readonly STORAGE_KEY = "auth_user";
 
   // Get the current user from localStorage
@@ -26,47 +25,29 @@ class AuthService {
     localStorage.removeItem(this.STORAGE_KEY);
   }
 
-  // Simulate signup - In a real app, this would call your MongoDB API
+  // Signup user with MongoDB backend
   async signup(credentials: SignupCredentials): Promise<User> {
     try {
       console.log("Signing up user:", credentials);
       
-      // This is where you would call your MongoDB API
-      // const response = await fetch(`${API_URL}/signup`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(credentials)
-      // });
+      const response = await fetch(`${API_URL}/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
       
-      // Simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Check if email already exists in localStorage
-      const existingUsers = this.getAllUsers();
-      const userExists = existingUsers.some(user => user.email === credentials.email);
-      
-      if (userExists) {
-        throw new Error("User with this email already exists");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to sign up");
       }
       
-      // Create new user object
-      const newUser: User = {
-        _id: Date.now().toString(), // simple ID for simulation
-        name: credentials.name,
-        email: credentials.email,
-        // In a real app, NEVER store the raw password - it should be hashed on the server
-      };
-      
-      // Save the user for simulation purposes
-      this.saveUserToLocalStorage(newUser, credentials.password);
+      const userData = await response.json();
       
       // Save user to localStorage for auth state
-      const userForAuth = { ...newUser };
-      delete userForAuth.password; // Remove password from auth state
-      this.saveUser(userForAuth);
+      this.saveUser(userData);
       
       toast.success("Account created successfully!");
-      return userForAuth;
+      return userData;
     } catch (error) {
       console.error("Signup error:", error);
       if (error instanceof Error) {
@@ -77,42 +58,29 @@ class AuthService {
     }
   }
 
-  // Simulate login - In a real app, this would call your MongoDB API
+  // Login user with MongoDB backend
   async login(credentials: LoginCredentials): Promise<User> {
     try {
       console.log("Logging in user:", credentials);
       
-      // This is where you would call your MongoDB API
-      // const response = await fetch(`${API_URL}/login`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(credentials)
-      // });
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
       
-      // Simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Get all users from localStorage
-      const users = this.getAllUsers();
-      
-      // Find user with matching email and password
-      const user = users.find(
-        user => user.email === credentials.email && user.password === credentials.password
-      );
-      
-      if (!user) {
-        throw new Error("Invalid email or password");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Invalid email or password");
       }
       
-      // Create a copy without password for auth state
-      const authenticatedUser = { ...user };
-      delete authenticatedUser.password;
+      const userData = await response.json();
       
       // Save to localStorage for auth state
-      this.saveUser(authenticatedUser);
+      this.saveUser(userData);
       
       toast.success("Login successful!");
-      return authenticatedUser;
+      return userData;
     } catch (error) {
       console.error("Login error:", error);
       if (error instanceof Error) {
@@ -127,21 +95,6 @@ class AuthService {
   logout(): void {
     this.removeUser();
     toast.info("Logged out successfully");
-  }
-
-  // Helper methods for simulation
-  
-  // Get all users from localStorage
-  private getAllUsers(): User[] {
-    const usersJson = localStorage.getItem("users");
-    return usersJson ? JSON.parse(usersJson) : [];
-  }
-  
-  // Save a user to localStorage users array
-  private saveUserToLocalStorage(user: User, password: string): void {
-    const users = this.getAllUsers();
-    users.push({ ...user, password });
-    localStorage.setItem("users", JSON.stringify(users));
   }
 }
 
