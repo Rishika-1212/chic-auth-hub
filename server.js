@@ -15,7 +15,7 @@ app.use(cors());
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB connected...'))
+  .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
 
 // User Schema
@@ -43,7 +43,7 @@ const UserSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema);
 
 // JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-jwt-key';
 
 // Routes
 app.post('/api/auth/signup', async (req, res) => {
@@ -81,7 +81,8 @@ app.post('/api/auth/signup', async (req, res) => {
     const userData = {
       _id: user.id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      token: token
     };
 
     res.status(201).json(userData);
@@ -118,13 +119,41 @@ app.post('/api/auth/login', async (req, res) => {
     const userData = {
       _id: user.id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      token: token
     };
 
     res.json(userData);
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Protected route example
+app.get('/api/auth/user', async (req, res) => {
+  try {
+    // Get token from header
+    const token = req.header('x-auth-token');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+    
+    // Verify token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Find user by id
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Auth error:', error);
+    res.status(401).json({ message: 'Token is not valid' });
   }
 });
 
